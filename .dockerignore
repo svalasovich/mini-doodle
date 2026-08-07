@@ -1,0 +1,17 @@
+.git
+.gitattributes
+.gitignore
+.idea
+.classpath
+.project
+.factorypath
+.settings
+bin
+build
+.gradle
+README.md
+HELP.md
+CLAUDE.md
+CLAUDE.local.md
+Dockerfile
+docker-compose.yml

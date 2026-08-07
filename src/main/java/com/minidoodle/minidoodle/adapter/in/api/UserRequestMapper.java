@@ -7,7 +7,7 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @Component
-public class UserMapper {
+public class UserRequestMapper {
     public UserCreateCommand toUserCommand(@NotNull UserCreateRequest request) {
         return new UserCreateCommand(request.name(), request.email());
     }

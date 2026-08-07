@@ -5,7 +5,6 @@ import com.minidoodle.minidoodle.port.out.UserCreatePort;
 import com.minidoodle.minidoodle.port.out.UserGetPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
@@ -14,16 +13,16 @@ import java.util.Optional;
 public class UserAdapter implements UserCreatePort, UserGetPort {
 
     private final UserRepository userRepository;
-    private final UserMapper userMapper;
+    private final UserEntityMapper userEntityMapper;
 
     @Override
     public Optional<User> get(Long id) {
-        return userRepository.findById(id).map(userMapper::toModel);
+        return userRepository.findById(id).map(userEntityMapper::toModel);
     }
 
     @Override
     public User create(User user) {
-        var entity = userRepository.save(userMapper.toEntity(user));
-        return userMapper.toModel(entity);
+        var entity = userRepository.save(userEntityMapper.toEntity(user));
+        return userEntityMapper.toModel(entity);
     }
 }

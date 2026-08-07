@@ -7,7 +7,7 @@ import org.springframework.validation.annotation.Validated;
 
 @Component
 @Validated
-public class UserMapper {
+public class UserEntityMapper {
 
     public UserEntity toEntity(@NotNull User user) {
         return new UserEntity(user.id(), user.name(), user.email(), user.createdAt());

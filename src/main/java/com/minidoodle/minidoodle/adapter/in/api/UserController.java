@@ -8,17 +8,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-@RestController("v1/users")
+@RestController
+@RequestMapping("v1/users")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserCreateUseCase userCreateUseCase;
     private final UserGetUseCase userGetUseCase;
-    private final UserMapper userMapper;
+    private final UserRequestMapper userRequestMapper;
 
     @PostMapping
     public @ResponseBody ResponseEntity<User> create(@RequestBody @Valid UserCreateRequest request) {
-        var user = userCreateUseCase.create(userMapper.toUserCommand(request));
+        var user = userCreateUseCase.create(userRequestMapper.toUserCommand(request));
         return ResponseEntity.ok().body(user);
     }
 
