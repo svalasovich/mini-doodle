@@ -13,7 +13,7 @@ import java.time.Instant;
 
 @Immutable
 @Entity
-@Table(name = "user")
+@Table(name = "users")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

@@ -21,6 +21,11 @@ with an aggregated free/busy view per user. Java 25, Spring Boot 4.1, PostgreSQL
 
 Tests use JUnit 5 and Testcontainers (Postgres) — running them requires Docker to be available.
 
+Dependencies use Spring Boot 4.1's split starter names (e.g. `spring-boot-starter-webmvc`,
+`spring-boot-starter-data-jpa` + matching `-test` starters), not the older `spring-boot-starter-web`
+convention — match this style when adding dependencies to `build.gradle`. Lombok is available on
+both main and test source sets.
+
 All HTTP routes are served under the `/api` context path (`server.servlet.context-path` in
 `application.yaml`).
 
@@ -76,10 +81,18 @@ Booking returns `409 Conflict` if the slot is already taken, handled via a condi
 another request won the race. Availability aggregation merges adjacent slots with the same status
 into a single interval, regardless of the slot granularity used at creation time.
 
-No Flyway migrations exist yet; the target schema (see README) uses a Postgres `EXCLUDE USING gist`
+The full target schema (see README) is already applied via
+`src/main/resources/db/migration/V20260807193034__init_schema.sql`, ahead of the `Slot`/`Meeting`/
+`Participant` application code that will use it. It includes a Postgres `EXCLUDE USING gist`
 constraint on `(user_id, tstzrange(start_time, end_time))` to reject overlapping slots at the
 database level, and a `UNIQUE` constraint on `slots.meeting_id` to enforce the 1:1 slot/meeting link
 — integrity is enforced by the database rather than re-implemented in application code.
+
+Migration files are versioned `V<UTC timestamp yyyyMMddHHmmss>__description.sql` instead of sequential
+integers, so migrations authored on parallel branches don't collide on the same version number when
+merged. `spring.flyway.out-of-order` is set to `false` in `application.yaml` (Flyway's default, made
+explicit) so that if a migration with an older timestamp is merged in after a newer one has already
+run, it fails loudly instead of being silently applied out of order.
 
 ## Key design decisions
 

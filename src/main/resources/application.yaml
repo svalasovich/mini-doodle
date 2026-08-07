@@ -1,6 +1,9 @@
 spring:
   application:
     name: mini-doodle
+  flyway:
+    out-of-order: false
+    validate-migration-naming: true
 server:
   servlet:
     context-path: "/api"
