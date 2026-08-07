@@ -1,6 +1,5 @@
 package com.minidoodle.minidoodle.adapter.in.api;
 
-import com.minidoodle.minidoodle.domain.model.User;
 import com.minidoodle.minidoodle.port.in.UserCreateUseCase;
 import com.minidoodle.minidoodle.port.in.UserGetUseCase;
 import jakarta.validation.Valid;
@@ -15,16 +14,20 @@ public class UserController {
 
     private final UserCreateUseCase userCreateUseCase;
     private final UserGetUseCase userGetUseCase;
-    private final UserRequestMapper userRequestMapper;
+    private final UserControllerMapper userControllerMapper;
 
     @PostMapping
-    public @ResponseBody ResponseEntity<User> create(@RequestBody @Valid UserCreateRequest request) {
-        var user = userCreateUseCase.create(userRequestMapper.toUserCommand(request));
-        return ResponseEntity.ok().body(user);
+    public @ResponseBody ResponseEntity<UserResponse> create(@RequestBody @Valid UserCreateRequest request) {
+        var user = userCreateUseCase.create(userControllerMapper.toUserCommand(request));
+        var response = userControllerMapper.toUserResponse(user);
+
+        return ResponseEntity.ok().body(response);
     }
 
     @GetMapping("/{id}")
-    public @ResponseBody ResponseEntity<User> get(@PathVariable Long id) {
-        return ResponseEntity.of(userGetUseCase.get(id));
+    public @ResponseBody ResponseEntity<UserResponse> get(@PathVariable Long id) {
+        var response = userGetUseCase.get(id).map(userControllerMapper::toUserResponse);
+
+        return ResponseEntity.of(response);
     }
 }
