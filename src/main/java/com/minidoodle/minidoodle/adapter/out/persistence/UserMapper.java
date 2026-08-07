@@ -1,16 +1,19 @@
 package com.minidoodle.minidoodle.adapter.out.persistence;
 
 import com.minidoodle.minidoodle.domain.model.User;
-import org.springframework.stereotype.Service;
+import jakarta.validation.constraints.NotNull;
+import org.springframework.stereotype.Component;
+import org.springframework.validation.annotation.Validated;
 
-@Service
+@Component
+@Validated
 public class UserMapper {
 
-    public UserEntity toEntity(User user) {
-        return new UserEntity(user.id(), user.email());
+    public UserEntity toEntity(@NotNull User user) {
+        return new UserEntity(user.id(), user.name(), user.email(), user.createdAt());
     }
 
-    public User toModel(UserEntity entity) {
-        return new User(entity.getId(), entity.getEmail());
+    public User toModel(@NotNull UserEntity entity) {
+        return new User(entity.getId(), entity.getName(), entity.getEmail(), entity.getCreatedAt());
     }
 }

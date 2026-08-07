@@ -1,6 +1,7 @@
 package com.minidoodle.minidoodle.domain.service;
 
 import com.minidoodle.minidoodle.domain.model.User;
+import com.minidoodle.minidoodle.domain.model.UserCreateCommand;
 import com.minidoodle.minidoodle.port.in.UserCreateUseCase;
 import com.minidoodle.minidoodle.port.in.UserGetUseCase;
 import com.minidoodle.minidoodle.port.out.UserCreatePort;
@@ -16,10 +17,11 @@ public class UserService implements UserGetUseCase, UserCreateUseCase {
 
     private final UserCreatePort userCreatePort;
     private final UserGetPort userGetPort;
+    private final UserMapper userMapper;
 
     @Override
-    public void create() {
-
+    public User create(UserCreateCommand command) {
+        return userCreatePort.create(userMapper.toUser(command));
     }
 
     @Override

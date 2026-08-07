@@ -1,4 +1,6 @@
 package com.minidoodle.minidoodle.domain.model;
 
-public record User(Long id, String email) {
+import java.time.Instant;
+
+public record User(Long id, String name, String email, Instant createdAt) {
 }

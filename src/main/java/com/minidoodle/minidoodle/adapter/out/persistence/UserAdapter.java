@@ -4,11 +4,12 @@ import com.minidoodle.minidoodle.domain.model.User;
 import com.minidoodle.minidoodle.port.out.UserCreatePort;
 import com.minidoodle.minidoodle.port.out.UserGetPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
-@Service
+@Repository
 @RequiredArgsConstructor
 public class UserAdapter implements UserCreatePort, UserGetPort {
 
@@ -18,5 +19,11 @@ public class UserAdapter implements UserCreatePort, UserGetPort {
     @Override
     public Optional<User> get(Long id) {
         return userRepository.findById(id).map(userMapper::toModel);
+    }
+
+    @Override
+    public User create(User user) {
+        var entity = userRepository.save(userMapper.toEntity(user));
+        return userMapper.toModel(entity);
     }
 }
