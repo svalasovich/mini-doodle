@@ -27,108 +27,10 @@ Schema is applied automatically on startup via Flyway migrations.
 - **Meeting** — created by booking exactly one slot (1:1). Has a title, description and participants.
 - **Participant** — an external contact (`name` + `email`), not a platform user.
 
-A slot's FREE/BUSY status is not stored — it is derived from whether `slot.meeting_id` is set. This
-keeps a single source of truth that cannot drift from the actual booking state.
+## Docs
 
-All timestamps are stored and returned in UTC (`TIMESTAMPTZ`); timezone conversion for display is a
-client responsibility.
-
-## API
-
-### Users
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/users` | Create a user |
-
-### Slots
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/users/{userId}/slots` | Slice `{start, end, duration}` into consecutive free slots |
-| `GET` | `/api/users/{userId}/slots?from=&to=` | List raw slots in a time frame |
-| `PUT` | `/api/users/{userId}/slots/{slotId}` | Replace a slot's time range (only if not booked) |
-| `DELETE` | `/api/users/{userId}/slots/{slotId}` | Delete a slot (only if not booked) |
-
-### Meetings
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/meetings` | Book a slot: `{slotId, title, description, participants: [{name, email}]}` |
-| `GET` | `/api/meetings/{meetingId}` | Meeting details incl. participants and linked slot |
-| `DELETE` | `/api/meetings/{meetingId}` | Cancel the meeting; the slot is freed automatically |
-
-Booking returns `409 Conflict` if the slot is already taken. Concurrency is handled by a conditional
-`UPDATE slots SET meeting_id = ? WHERE id = ? AND meeting_id IS NULL` — if no rows are affected,
-another request won the race.
-
-### Availability
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/users/{userId}/availability?from=&to=` | Aggregated free/busy view |
-
-Adjacent slots with the same status are merged into a single interval, regardless of the slot
-granularity used at creation time:
-
-```json
-[
-  {"start": "2026-08-10T09:00:00Z", "end": "2026-08-10T10:00:00Z", "status": "FREE", "slotIds": [1, 2]},
-  {"start": "2026-08-10T10:00:00Z", "end": "2026-08-10T10:30:00Z", "status": "BUSY", "slotIds": [3]}
-]
-```
-
-## Database schema
-
-```sql
-CREATE EXTENSION IF NOT EXISTS btree_gist;
-
-CREATE TABLE users
-(
-    id         BIGSERIAL PRIMARY KEY,
-    name       VARCHAR(255) NOT NULL,
-    email      VARCHAR(255) NOT NULL UNIQUE,
-    created_at TIMESTAMPTZ  NOT NULL DEFAULT now()
-);
-
-CREATE TABLE meetings
-(
-    id          BIGSERIAL PRIMARY KEY,
-    title       VARCHAR(255) NOT NULL,
-    description TEXT,
-    created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
-);
-
-CREATE TABLE meeting_participants
-(
-    id         BIGSERIAL PRIMARY KEY,
-    meeting_id BIGINT       NOT NULL REFERENCES meetings (id) ON DELETE CASCADE,
-    name       VARCHAR(255) NOT NULL,
-    email      VARCHAR(255) NOT NULL
-);
-CREATE INDEX idx_participants_meeting ON meeting_participants (meeting_id);
-
-CREATE TABLE slots
-(
-    id         BIGSERIAL PRIMARY KEY,
-    user_id    BIGINT        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    meeting_id BIGINT UNIQUE REFERENCES meetings (id) ON DELETE SET NULL,
-    start_time TIMESTAMPTZ   NOT NULL,
-    end_time   TIMESTAMPTZ   NOT NULL,
-    created_at TIMESTAMPTZ   NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ   NOT NULL DEFAULT now(),
-
-    CONSTRAINT chk_slot_time CHECK (end_time > start_time),
-    CONSTRAINT excl_no_overlap EXCLUDE USING gist (
-        user_id WITH =,
-        tstzrange(start_time, end_time) WITH &&
-        )
-);
-CREATE INDEX idx_slots_user_time ON slots (user_id, start_time, end_time);
-CREATE INDEX idx_slots_free ON slots (user_id) WHERE meeting_id IS NULL;
-```
-
-Integrity is enforced by the database rather than re-implemented in application code: overlapping
-slots for the same user are rejected by an exclusion constraint, and the 1:1 slot/meeting link is
-guaranteed by a unique constraint. Indexes target the dominant access pattern — range queries scoped
-to a single user.
+- [Database](docs/database.md) — schema/DDL, why PostgreSQL, DB-related trade-offs
+- [API](docs/api.md) — full endpoint reference, examples, API-related trade-offs
 
 ## Key design decisions & trade-offs
 
@@ -138,19 +40,9 @@ to a single user.
 - **No cross-calendar conflict checking.** Booking validates and locks only the slot being booked.
   Participants are external contacts, so nothing is checked or blocked on their behalf. Group
   availability matching (Doodle-poll style) is a materially different feature and not implemented.
-- **PostgreSQL over NoSQL (MongoDB, Cassandra).** The data is inherently relational and booking
-  requires strong consistency — a slot must never be double booked. Cassandra targets write-heavy,
-  eventually-consistent, massively distributed workloads, which neither matches this scale nor the
-  consistency needed. MongoDB would mean denormalizing or joining in application code, and
-  range-based free/busy aggregation would have to be built by hand.
-- **Read caching for availability and slot listing.** These are read-heavy and frequently requested;
-  a cache reduces read latency and DB load. Invalidated per user on booking, cancellation and slot
-  create/delete — the operations that change availability.
-- **No Spring Data REST.** None of the resources are pure CRUD: slot creation slices a range into
-  multiple records, deletion respects booking state, booking is a conditional atomic write, and
-  availability is a derived read-model. Using it for the "simple" endpoints and custom controllers
-  elsewhere would mix two response conventions (HAL vs plain JSON) in one API. It fits services that
-  expose a database more or less directly — not this one.
+
+See the individual docs above for database- and API-specific trade-offs (DB choice, caching, API
+framework choice).
 
 ## Not implemented
 

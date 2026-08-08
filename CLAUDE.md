@@ -30,6 +30,21 @@ both main and test source sets.
 All HTTP routes are served under the `/api` prefix (`spring.mvc.servlet.path` in `application.yaml`,
 which maps the `DispatcherServlet` rather than setting the servlet context path).
 
+## Documentation
+
+- [docs/api.md](docs/api.md) — full endpoint reference, examples, API trade-offs
+- [docs/database.md](docs/database.md) — schema, why PostgreSQL, DB trade-offs, future scaling ideas
+
+`README.md` stays a short overview with links out to `docs/`. Add new `{topic}.md` files there as
+the `Slot`/`Meeting`/`Availability` docs grow, rather than growing README back out — and keep this
+file (`CLAUDE.md`) pointing at those docs rather than duplicating their content.
+
+## Commit messages
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/) — `type(scope): summary`, e.g.
+`feat(slot): add slot creation endpoint`, `fix(booking): handle race on double booking`,
+`docs(database): document sharding and CQRS ideas`.
+
 ## Architecture
 
 The codebase is being restructured into hexagonal (ports & adapters) architecture. Package layout
@@ -55,11 +70,16 @@ annotations (`@Service`, `@Component`, `@Validated`) for DI convenience — this
 exception to hexagonal purity for this project, not a bug to flag or "fix".
 
 Only the `User` slice is scaffolded so far (create/get); `Slot`, `Meeting`, `Participant`, and
-`Availability` still need to be built out following the same layering. `ApiExceptionHandler`
-(`adapter/in/api`) is the single `@RestControllerAdvice`; currently it only maps
-`MethodArgumentNotValidException` to `400` — new use cases that introduce their own failure modes
-(conflicts, not-found, etc.) should add handlers there rather than letting exceptions fall through to
-a generic `500`.
+`Availability` still need to be built out following the same layering — see
+[docs/api.md](docs/api.md) for the target endpoint set. `ApiExceptionHandler` (`adapter/in/api`) is
+the single `@RestControllerAdvice`; currently it only maps `MethodArgumentNotValidException` to
+`400` — new use cases that introduce their own failure modes (conflicts, not-found, etc.) should add
+handlers there rather than letting exceptions fall through to a generic `500`.
+
+The two `User` endpoints implemented so far live under `UserController`'s actual
+`@RequestMapping("v1/users")` — i.e. `/api/v1/users` and `/api/v1/users/{id}` (GET), not the
+unversioned `/api/users` paths in `docs/api.md`. Reconcile that (drop `/v1` here, or add it to the
+docs) before building out `Slot`/`Meeting`/`Participant` so all endpoints share one convention.
 
 ## Domain model
 
@@ -70,40 +90,14 @@ a generic `500`.
 - **Meeting** — created by booking exactly one slot (1:1). Has a title, description and participants.
 - **Participant** — an external contact (`name` + `email`), not a platform user.
 
-A slot's FREE/BUSY status is not stored — it is derived from whether `slot.meeting_id` is set, so it
-can never drift from the actual booking state. All timestamps are stored/returned in UTC
-(`TIMESTAMPTZ`); timezone conversion for display is a client responsibility.
+See [docs/database.md](docs/database.md) for how these map to tables (incl. how FREE/BUSY status is
+derived rather than stored, and UTC timestamp handling).
 
-## API surface (target)
+## Migrations
 
-The two `User` endpoints below are implemented, but under `UserController`'s actual
-`@RequestMapping("v1/users")` — i.e. `/api/v1/users` and `/api/v1/users/{id}` (GET), not the
-unversioned `/api/users` paths shown in this target table. Reconcile that (drop `/v1` here, or add it
-to the table) before building out `Slot`/`Meeting`/`Participant` so all endpoints share one convention.
-
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/users` | Create a user |
-| `POST` | `/api/users/{userId}/slots` | Slice `{start, end, duration}` into consecutive free slots |
-| `GET` | `/api/users/{userId}/slots?from=&to=` | List raw slots in a time frame |
-| `PUT` | `/api/users/{userId}/slots/{slotId}` | Replace a slot's time range (only if not booked) |
-| `DELETE` | `/api/users/{userId}/slots/{slotId}` | Delete a slot (only if not booked) |
-| `POST` | `/api/meetings` | Book a slot: `{slotId, title, description, participants: [{name, email}]}` |
-| `GET` | `/api/meetings/{meetingId}` | Meeting details incl. participants and linked slot |
-| `DELETE` | `/api/meetings/{meetingId}` | Cancel the meeting; the slot is freed automatically |
-| `GET` | `/api/users/{userId}/availability?from=&to=` | Aggregated free/busy view |
-
-Booking returns `409 Conflict` if the slot is already taken, handled via a conditional
-`UPDATE slots SET meeting_id = ? WHERE id = ? AND meeting_id IS NULL` — if no rows are affected,
-another request won the race. Availability aggregation merges adjacent slots with the same status
-into a single interval, regardless of the slot granularity used at creation time.
-
-The full target schema (see README) is already applied via
+The full target schema (see [docs/database.md](docs/database.md)) is already applied via
 `src/main/resources/db/migration/V2026.08.07_19.30__init_schema.sql`, ahead of the `Slot`/`Meeting`/
-`Participant` application code that will use it. It includes a Postgres `EXCLUDE USING gist`
-constraint on `(user_id, tstzrange(start_time, end_time))` to reject overlapping slots at the
-database level, and a `UNIQUE` constraint on `slots.meeting_id` to enforce the 1:1 slot/meeting link
-— integrity is enforced by the database rather than re-implemented in application code.
+`Participant` application code that will use it.
 
 Migration files are versioned `V<UTC timestamp yyyy.MM.dd_HH.mm>__description.sql` instead of
 sequential integers, so migrations authored on parallel branches don't collide on the same version
@@ -120,11 +114,8 @@ startup instead of being silently skipped.
 - **No cross-calendar conflict checking.** Booking validates and locks only the slot being booked.
   Participants are external contacts, so nothing is checked/blocked on their behalf. Group
   availability matching (Doodle-poll style) is out of scope.
-- **PostgreSQL, not NoSQL.** The data is relational and booking requires strong consistency (a slot
-  must never be double booked).
-- **Read caching planned for availability and slot listing** (read-heavy endpoints), invalidated per
-  user on booking, cancellation, and slot create/delete.
-- **No Spring Data REST** — none of the resources are pure CRUD (slicing, booking, and availability
-  are all derived/composite operations), and mixing HAL with plain JSON responses was rejected.
 - **No authentication/authorization, recurring slots/meetings, outbound notifications, or
   microservice split** — explicitly out of scope; see README "Not implemented" for the full list.
+
+See [docs/database.md](docs/database.md) and [docs/api.md](docs/api.md) for DB- and API-specific
+design decisions and trade-offs (PostgreSQL vs. NoSQL, read caching, no Spring Data REST, etc.).
