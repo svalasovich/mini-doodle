@@ -52,6 +52,13 @@ unformatted code.
 
 ## Key design decisions & trade-offs
 
+- **Hexagonal (ports & adapters) architecture.** `domain` holds the business logic and stays
+  framework-free, depending only on `port` interfaces — never on Spring, JPA, or HTTP directly.
+  Driving adapters (REST controllers) and driven adapters (JPA persistence) each keep their own
+  request/response and entity models, separate from the domain model and mapped to/from it at the
+  boundary. This isolates business logic from how requests arrive and how data is stored, and lets
+  either side be replaced (a different persistence technology, a different API style) without
+  touching the domain.
 - **Slot/Meeting is 1:1**, per the task wording ("A slot can be booked as a meeting"). Booking a
   longer block requires creating a slot of that duration up front; slots are not merged across
   bookings.
