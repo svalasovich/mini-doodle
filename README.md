@@ -18,6 +18,24 @@ docker-compose up --build
 
 Schema is applied automatically on startup via Flyway migrations.
 
+## CI/CD
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and on push to `main`, with
+two independent jobs:
+
+- **lint** — `./gradlew spotlessCheck`, fails the build on unformatted Java
+- **test** — `./gradlew test` (JUnit 5 + Testcontainers; the runner needs Docker available)
+
+There's no deployment step yet — CI is verification-only.
+
+## Code style
+
+Java is formatted with [Spotless](https://github.com/diffplug/spotless) using Google Java Format,
+plus unused-import removal, trailing-whitespace trimming, and a trailing newline (see the
+`spotless { java { ... } }` block in `build.gradle`). Run `./gradlew spotlessApply` before
+committing — `spotlessCheck` is wired into `check`, so `./gradlew build`, and CI, both fail on
+unformatted code.
+
 ## Domain model
 
 - **User** — owns a calendar. *Calendar* exists as a domain concept only and is never exposed
@@ -40,6 +58,11 @@ Schema is applied automatically on startup via Flyway migrations.
 - **No cross-calendar conflict checking.** Booking validates and locks only the slot being booked.
   Participants are external contacts, so nothing is checked or blocked on their behalf. Group
   availability matching (Doodle-poll style) is a materially different feature and not implemented.
+- **Slot lookups for update/delete are scoped to `(id, userId)` together, not `id` alone**, even
+  though `id` is already globally unique. This makes the `userId` in
+  `/users/{userId}/slots/{slotId}` load-bearing — a slot can only be reached through the user it
+  actually belongs to, instead of any `userId` in the path resolving the same row by its primary key
+  (which would be a broken-object-level-authorization gap).
 
 See the individual docs above for database- and API-specific trade-offs (DB choice, caching, API
 framework choice).

@@ -38,6 +38,29 @@ both main and test source sets.
 All HTTP routes are served under the `/api` prefix (`spring.mvc.servlet.path` in `application.yaml`,
 which maps the `DispatcherServlet` rather than setting the servlet context path).
 
+## Testing
+
+- Match the test type to the layer under test:
+  - `adapter/out/persistence` (repository/adapter classes) — `@DataJpaTest` against the real
+    Testcontainers Postgres (`@AutoConfigureTestDatabase(replace = Replace.NONE)` +
+    `@Import(TestcontainersConfiguration.class)`), not an embedded/in-memory database. See
+    `UserAdapterTest`.
+  - `adapter/in/api` (controllers) — `@WebMvcTest(...)` + `MockMvc`, with the use cases mocked via
+    `@MockitoBean` and the real `{Feature}ControllerMapper` imported so request/response mapping and
+    bean validation are exercised for real. See `UserControllerTest`.
+  - Everything else (`domain/service`, mappers, plain value objects) — plain JUnit 5, no Spring
+    context. Mock `port/out` dependencies with Mockito where a class has them (see `UserServiceTest`,
+    `SlotServiceTest`); mappers have no dependencies to mock, so just instantiate them directly (see
+    `UserMapperTest`, `SlotEntityMapperTest`).
+- Structure test methods in `// given` / `// when` / `// then` sections.
+- Never re-type a literal in an assertion that's already available on a "given" fixture — assert
+  against the fixture's own field/getter (e.g. `assertThat(result.name()).isEqualTo(command.name())`),
+  not a duplicated string/number (`isEqualTo("Ada Lovelace")`). A duplicated literal can silently drift
+  from the fixture on a copy-paste edit and the test would still pass; referencing the fixture ties the
+  assertion to a single source of truth. Same for repeated IDs used across construction, stubbing, and
+  the call under test — extract them into a local variable (`var userId = 1L;`) instead of writing the
+  same literal more than once.
+
 ## Documentation
 
 - [docs/api.md](docs/api.md) — full endpoint reference, examples, API trade-offs
