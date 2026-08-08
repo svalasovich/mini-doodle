@@ -9,11 +9,11 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class UserEntityMapper {
 
-    public UserEntity toEntity(@NotNull User user) {
-        return new UserEntity(user.id(), user.name(), user.email(), user.createdAt());
-    }
+  public UserEntity toEntity(@NotNull User user) {
+    return new UserEntity(user.id(), user.name(), user.email(), user.createdAt());
+  }
 
-    public User toModel(@NotNull UserEntity entity) {
-        return new User(entity.getId(), entity.getName(), entity.getEmail(), entity.getCreatedAt());
-    }
+  public User toModel(@NotNull UserEntity entity) {
+    return new User(entity.getId(), entity.getName(), entity.getEmail(), entity.getCreatedAt());
+  }
 }

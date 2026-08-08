@@ -12,22 +12,23 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserCreateUseCase userCreateUseCase;
-    private final UserGetUseCase userGetUseCase;
-    private final UserControllerMapper userControllerMapper;
+  private final UserCreateUseCase userCreateUseCase;
+  private final UserGetUseCase userGetUseCase;
+  private final UserControllerMapper userControllerMapper;
 
-    @PostMapping
-    public @ResponseBody ResponseEntity<UserResponse> create(@RequestBody @Valid UserCreateRequest request) {
-        var user = userCreateUseCase.create(userControllerMapper.toUserCommand(request));
-        var response = userControllerMapper.toUserResponse(user);
+  @PostMapping
+  public @ResponseBody ResponseEntity<UserResponse> create(
+      @RequestBody @Valid UserCreateRequest request) {
+    var user = userCreateUseCase.create(userControllerMapper.toUserCommand(request));
+    var response = userControllerMapper.toUserResponse(user);
 
-        return ResponseEntity.ok().body(response);
-    }
+    return ResponseEntity.ok().body(response);
+  }
 
-    @GetMapping("/{id}")
-    public @ResponseBody ResponseEntity<UserResponse> get(@PathVariable Long id) {
-        var response = userGetUseCase.get(id).map(userControllerMapper::toUserResponse);
+  @GetMapping("/{id}")
+  public @ResponseBody ResponseEntity<UserResponse> get(@PathVariable Long id) {
+    var response = userGetUseCase.get(id).map(userControllerMapper::toUserResponse);
 
-        return ResponseEntity.of(response);
-    }
+    return ResponseEntity.of(response);
+  }
 }

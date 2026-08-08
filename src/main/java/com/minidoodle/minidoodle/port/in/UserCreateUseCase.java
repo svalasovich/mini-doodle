@@ -4,5 +4,5 @@ import com.minidoodle.minidoodle.domain.model.User;
 import com.minidoodle.minidoodle.domain.model.UserCreateCommand;
 
 public interface UserCreateUseCase {
-    User create(UserCreateCommand command);
+  User create(UserCreateCommand command);
 }

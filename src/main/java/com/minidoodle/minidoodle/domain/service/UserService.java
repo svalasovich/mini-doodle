@@ -6,27 +6,25 @@ import com.minidoodle.minidoodle.port.in.UserCreateUseCase;
 import com.minidoodle.minidoodle.port.in.UserGetUseCase;
 import com.minidoodle.minidoodle.port.out.UserCreatePort;
 import com.minidoodle.minidoodle.port.out.UserGetPort;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class UserService implements UserGetUseCase, UserCreateUseCase {
 
-    private final UserCreatePort userCreatePort;
-    private final UserGetPort userGetPort;
-    private final UserMapper userMapper;
+  private final UserCreatePort userCreatePort;
+  private final UserGetPort userGetPort;
+  private final UserMapper userMapper;
 
-    @Override
-    public User create(UserCreateCommand command) {
-        return userCreatePort.create(userMapper.toUser(command));
-    }
+  @Override
+  public User create(UserCreateCommand command) {
+    return userCreatePort.create(userMapper.toUser(command));
+  }
 
-    @Override
-    public Optional<User> get(Long id) {
-        return userGetPort.get(id);
-    }
+  @Override
+  public Optional<User> get(Long id) {
+    return userGetPort.get(id);
+  }
 }
-

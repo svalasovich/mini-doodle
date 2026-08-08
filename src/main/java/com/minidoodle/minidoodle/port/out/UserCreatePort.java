@@ -4,5 +4,5 @@ import com.minidoodle.minidoodle.domain.model.User;
 
 public interface UserCreatePort {
 
-    User create(User user);
+  User create(User user);
 }
